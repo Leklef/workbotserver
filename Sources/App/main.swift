@@ -38,6 +38,8 @@ try drop.addProvider(VaporMySQL.Provider.self)
 //        ])
 //}
 
+drop.preparations.append(User.self)
+
 drop.get("version") { request in
     if let db = drop.database?.driver as? MySQLDriver {
         let version = try db.raw("SELECT version()")
@@ -46,5 +48,42 @@ drop.get("version") { request in
         return "No DB connection"
     }
 }
+
+drop.get("newuser") { request in
+    var user = User(login: "admin", password: "admin", status: "admin")
+    try user.save()
+    return try JSON(node:[
+            "id":user.id,
+            "login":user.login,
+            "password":user.password,
+            "status":user.status
+        ])
+}
+
+drop.get("getuser") { request in
+    let user = try User.find(1)
+    return try JSON(node:[
+        "id":user!.id,
+        "login":user!.login,
+        "password":user!.password,
+        "status":user!.status
+        ])
+}
+
+drop.get("find") { request in
+    guard let login = request.data["login"]?.string else {throw Abort.badRequest}
+    guard let password = request.data["password"]?.string else {throw Abort.badRequest}
+    let query = try User.query().filter("Login", login).filter("Password", password)
+    guard let user = try query.makeQuery().first() else {return try JSON(node:[
+        "find":"false"
+        ])}
+    
+    return try JSON(node:[
+        "id":user.id,
+        "status":user.status
+    ])
+}
+
+
 
 drop.run()
